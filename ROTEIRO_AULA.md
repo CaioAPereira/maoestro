@@ -9,8 +9,8 @@ na ordem do arquivo. A **Parte 2** (Seções 8 e 9) é só para mostrar no final
 
 | Parte | Linhas de código | Linhas no arquivo (com comentários) |
 |---|---|---|
-| Parte 1: núcleo (codar junto) | 153 | ~240 |
-| Parte 2: extras (só mostrar) | 107 | ~160 |
+| Parte 1: núcleo (codar junto) | 156 | ~240 |
+| Parte 2: extras (só mostrar) | 109 | ~160 |
 
 ## ✅ Antes da aula
 - [ ] Pedir que a turma instale tudo antes (seção "Instalação" do README)
@@ -66,7 +66,7 @@ Rode o arquivo completo (`python maestro.py canva`) e apresente os primeiros sli
 - No Windows, `mouse_event` gera movimento "de verdade" (o `moveTo` teleporta e o Paint desenha reta)
 - ▶️ **Rodar:** o cursor segue o dedo 🤯
 
-## 42–46 min · ✍️ Seção 6: a pinça vira clique (13 linhas)
+## 42–46 min · ✍️ Seção 6: a pinça vira clique (16 linhas)
 - `mouseDown`/`mouseUp`: segurar o botão é o que permite desenhar
 - Tolerância de 3 quadros: se a IA falhar em 1 quadro, o traço não quebra
 - Só clica após ~0,25 s apontando: abrir/fechar a mão ou gesticular não gera clique falso

@@ -223,7 +223,10 @@ def atualizar_clique(gesto, estado):
         if estado["sem_pinca"] >= 3:
             pyautogui.mouseUp()
             estado["clicando"] = False
-    estado["mirando"] = estado["mirando"] + 1 if gesto == "APONTAR" else 0
+    if gesto == "APONTAR":
+        estado["mirando"] += 1
+    elif gesto not in ("PINCA", "NENHUM"):      # quadro de transição (NENHUM) não zera a mira
+        estado["mirando"] = 0
 
 
 # ==========================================================================
@@ -367,6 +370,8 @@ def aplicar_extras(frame, pontos, gesto, estado, agora):
     especial = gesto_especial(pontos) if pontos is not None else None
     progresso = 0.0 if estado["pausado"] else checar_atalho(especial, estado, frame, agora)
     rotulo, cor = VISUAL[especial or gesto]
+    if gesto == "PINCA" and not estado["clicando"]:
+        rotulo = "APONTE UM INSTANTE E PINCE"   # pinça sem mira: não clicou
 
     # Área ativa: o que está dentro deste retângulo cobre a tela inteira
     cv2.rectangle(frame, (int(MARGEM * largura), int(MARGEM * altura)),
