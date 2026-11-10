@@ -1,0 +1,5 @@
+__pycache__/
+.venv/
+venv/
+# Modelo da IA: o programa baixa sozinho na primeira execução
+hand_landmarker.task

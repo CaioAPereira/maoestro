@@ -1,0 +1,4 @@
+# Versões testadas (Python 3.9 a 3.14). O OpenCV vem junto com o MediaPipe:
+# NÃO instale "opencv-python" separado, senão os dois pacotes entram em conflito.
+mediapipe==1.2.2
+pyautogui==0.9.54
