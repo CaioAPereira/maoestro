@@ -9,8 +9,8 @@ na ordem do arquivo. A **Parte 2** (Seções 8 e 9) é só para mostrar no final
 
 | Parte | Linhas de código | Linhas no arquivo (com comentários) |
 |---|---|---|
-| Parte 1: núcleo (codar junto) | 153 | ~240 |
-| Parte 2: extras (só mostrar) | 107 | ~160 |
+| Parte 1: núcleo (codar junto) | 160 | ~240 |
+| Parte 2: extras (só mostrar) | 109 | ~160 |
 
 ## ✅ Antes da aula
 - [ ] Pedir que a turma instale tudo antes (seção "Instalação" do README)
@@ -34,7 +34,7 @@ Rode o arquivo completo (`python maestro.py canva`) e apresente os primeiros sli
 - Fluxo: `câmera → IA acha a mão → qual gesto? → ação (mouse/teclado)`
 - A sacada: simulando mouse e teclado, funciona em **qualquer** programa
 
-## 10–14 min · ✍️ Seção 1: importações e configurações (22 linhas)
+## 10–14 min · ✍️ Seção 1: importações e configurações (24 linhas)
 - Para que serve cada biblioteca
 - Configurações no topo: dá para ajustar sem mexer na lógica
 - `pyautogui.PAUSE = 0` e o `FAILSAFE` (canto da tela = emergência)
@@ -72,11 +72,11 @@ Rode o arquivo completo (`python maestro.py canva`) e apresente os primeiros sli
 - Só clica após ~0,25 s apontando: abrir/fechar a mão ou gesticular não gera clique falso
 - ▶️ **Rodar no Paint:** todo mundo desenhando no ar
 
-## 46–51 min · ✍️ Seção 7: girar a mão troca o slide (15 linhas)
-- `atan2` dá a inclinação da mão (pulso → base do médio): 0° = em pé
-- Mão aberta **parada** em pé por 0,6 s "arma" o giro (gesticular com a turma não dispara)
-- Tombou mais de 35° = troca; só troca de novo depois de voltar a ficar **parada** em pé de novo (< 17°)
-- Assim a volta da mão não "desfaz" a troca e tremidas pequenas não fazem nada
+## 46–51 min · ✍️ Seção 7: deslizar troca o slide (20 linhas)
+- **Âncora:** onde a mão aberta ficou parada. Parada por 0,5 s = pronta (gesticular com a turma não dispara)
+- Andou mais de 1,2 "tamanhos de mão" em até 0,5 s = deslize. Medir em tamanhos de mão faz valer perto ou longe da câmera
+- Depois de trocar, a âncora zera: a volta da mão não "desfaz" a troca
+- O painel mostra "PARE A MAO UM INSTANTE..." até estar pronto
 - ▶️ **Rodar no Canva/PowerPoint:** trocar slides com a mão
 
 ## 51–55 min · 👀 Parte 2: extras (só mostrar)

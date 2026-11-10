@@ -8,7 +8,7 @@ mouse e teclado. Funciona no **Canva, PowerPoint, LibreOffice Impress e Paint**.
 |---|---|
 | ☝️ Só o indicador levantado | Move o cursor |
 | 🤏 Pinça (polegar + indicador) | Segura o clique, ou seja, **desenha** |
-| 👋 Mão aberta girando (tombar o pulso, como virar página) | ← próximo / → anterior slide |
+| 👋 Mão aberta: pare um instante e deslize | ← próximo / → anterior slide |
 | 👍 Joinha (segure 1 s) | Canva: confete 🎉 |
 | ✌️ Paz (segure 1 s) | Canva: rufar de tambores · PowerPoint/LibreOffice: tela preta (repita para voltar) |
 | ✊ Mão fechada | Nada acontece (pausa natural) |
