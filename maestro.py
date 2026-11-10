@@ -7,7 +7,7 @@ qualquer programa: Canva, PowerPoint, LibreOffice Impress, Paint...
 
   ☝  Indicador levantado  -> move o cursor
   🤏 Pinça                -> segura o clique (desenha)
-  👋 Mão aberta deslizando -> próximo / anterior slide (pare a mão antes)
+  👋 Mão aberta deslizando -> próximo / anterior slide
   ✊ Mão fechada           -> nada acontece (pausa natural)
 
 PARTE 1 (Seções 1 a 7): núcleo, codado junto na aula.
@@ -42,10 +42,9 @@ CAMERA = 0                # 0 = webcam padrão (troque para 1 se tiver outra)
 MARGEM = 0.15             # borda da câmera ignorada: o dedo alcança os cantos da tela
 SUAVIZACAO = 5            # maior = cursor mais suave (e mais lento)
 LIMIAR_PINCA = 0.35       # distância polegar-indicador (em "tamanhos de mão") para clicar
-DESLIZE_DISTANCIA = 1.2   # quanto a mão anda (em "tamanhos de mão") para trocar o slide...
-DESLIZE_JANELA = 0.5      # ...em até quantos segundos depois de sair do lugar
-DESLIZE_FIRME = 0.5       # segundos com a mão aberta parada antes de deslizar (ignora gesticular)
-DESLIZE_ESPERA = 1.2      # segundos de espera entre uma troca e outra (a volta da mão não conta)
+DESLIZE_DISTANCIA = 0.15  # quanto a mão anda (fração da imagem) para trocar o slide...
+DESLIZE_JANELA = 0.4      # ...em até quantos segundos
+DESLIZE_ESPERA = 1.0      # segundos de espera entre um deslize e outro
 MIRA_QUADROS = 8          # quadros apontando (~0,25 s) antes de a pinça poder clicar
 
 pyautogui.PAUSE = 0           # sem isso ele espera 0,1 s após cada comando
@@ -63,7 +62,7 @@ def main():
     detector = carregar_detector()                                   # [Seção 3]
     # Tudo que o programa precisa "lembrar" de um quadro para o outro
     estado = {"cursor": None, "clicando": False, "sem_pinca": 0, "mirando": 0, "pausado": False,
-              "ancora": None, "inicio": 0.0, "parada": 0.0, "saiu": False, "ultima_troca": 0.0, "direcao": None}
+              "historico": deque(), "ultimo_deslize": 0.0, "direcao": None}
     inicio = time.time()
 
     try:
@@ -83,8 +82,8 @@ def main():
                 if not estado["pausado"]:                                     # [Seção 5]
                     if gesto in ("APONTAR", "PINCA"):                         # [Seção 5]
                         mover_cursor(pontos[8], estado)                       # [Seção 5]
+                    trocar_slide(pontos, gesto, estado, agora)                # [Seção 7]
             atualizar_clique("NENHUM" if estado["pausado"] else gesto, estado)  # [Seção 6]
-            trocar_slide(pontos, "NENHUM" if estado["pausado"] else gesto, estado, agora)  # [Seção 7]
 
             aplicar_extras(frame, pontos, gesto, estado, agora)   # [Parte 2] apague para desligar
             cv2.imshow("Maoestro", frame)
@@ -177,7 +176,7 @@ def classificar_gesto(pontos):
         return "PINCA"
     if indicador and not (medio or anelar or minimo):
         return "APONTAR"
-    if indicador and medio and anelar and minimo:
+    if indicador + medio + anelar + minimo >= 3:    # 3 de 4: no deslize algum dedo dobra
         return "MAO_ABERTA"
     if not (indicador or medio or anelar or minimo):
         return "PUNHO"
@@ -231,26 +230,20 @@ def atualizar_clique(gesto, estado):
 # SEÇÃO 7 - Deslizar a mão aberta troca o slide
 # ==========================================================================
 def trocar_slide(pontos, gesto, estado, agora):
-    if gesto != "MAO_ABERTA":                  # inclui "sem mão" e pausado
-        estado["ancora"] = None
+    historico = estado["historico"]
+    if gesto != "MAO_ABERTA":       # sem apagar: 1 quadro borrado no meio não perde o deslize
         return
-    regua = distancia(pontos[0], pontos[9])    # tamanho da mão: vale perto ou longe da câmera
-    # Âncora = onde a mão está parada. Demorou a completar o deslize? Recomeça dali.
-    if estado["ancora"] is None or agora - estado["parada"] > DESLIZE_JANELA:
-        estado["ancora"], estado["inicio"], estado["parada"] = pontos[9].x, agora, agora
-    deslocamento = (pontos[9].x - estado["ancora"]) / regua   # em "tamanhos de mão"
-    if abs(deslocamento) < 0.25:               # ainda parada (tolera a tremidinha)
-        if estado["saiu"]:                     # tinha saído e voltou: conta a parada de novo
-            estado["inicio"], estado["saiu"] = agora, False
-        estado["parada"] = agora
-        return
-    estado["saiu"] = True
-    if (abs(deslocamento) > DESLIZE_DISTANCIA and estado["parada"] - estado["inicio"] > DESLIZE_FIRME
-            and agora - estado["ultima_troca"] > DESLIZE_ESPERA):
+    # Guarda (tempo, posição x do centro da mão) só dos últimos DESLIZE_JANELA segundos
+    historico.append((agora, pontos[9].x))
+    while agora - historico[0][0] > DESLIZE_JANELA:
+        historico.popleft()
+
+    deslocamento = historico[-1][1] - historico[0][1]
+    if abs(deslocamento) > DESLIZE_DISTANCIA and agora - estado["ultimo_deslize"] > DESLIZE_ESPERA:
         estado["direcao"] = "right" if deslocamento < 0 else "left"  # como no celular: puxar p/ esquerda = próximo
         pyautogui.press(estado["direcao"])     # setas funcionam em todo programa de slides
-        estado["ultima_troca"] = agora
-        estado["ancora"] = None                # a volta da mão começa do zero (e sem estar parada)
+        estado["ultimo_deslize"] = agora
+        historico.clear()
 
 
 # ##########################################################################
@@ -374,8 +367,6 @@ def aplicar_extras(frame, pontos, gesto, estado, agora):
     especial = gesto_especial(pontos) if pontos is not None else None
     progresso = 0.0 if estado["pausado"] else checar_atalho(especial, estado, frame, agora)
     rotulo, cor = VISUAL[especial or gesto]
-    if gesto == "MAO_ABERTA" and not especial and agora - estado["inicio"] < DESLIZE_FIRME:
-        rotulo = "PARE A MAO UM INSTANTE..."   # ainda não está pronto para deslizar
 
     # Área ativa: o que está dentro deste retângulo cobre a tela inteira
     cv2.rectangle(frame, (int(MARGEM * largura), int(MARGEM * altura)),
@@ -403,7 +394,7 @@ def aplicar_extras(frame, pontos, gesto, estado, agora):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
 
     # Avisos grandes no meio: troca de slide (Seção 7) e atalhos (Seção 8)
-    if agora - estado["ultima_troca"] < 1.0:
+    if agora - estado["ultimo_deslize"] < 1.0:
         escrever_centralizado(frame, "PROXIMO >>" if estado["direcao"] == "right" else "<< ANTERIOR", altura // 2)
     elif estado["aviso"] and agora < estado["aviso"][1]:
         escrever_centralizado(frame, estado["aviso"][0], altura // 2)
