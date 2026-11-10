@@ -9,7 +9,7 @@ na ordem do arquivo. A **Parte 2** (Seções 8 e 9) é só para mostrar no final
 
 | Parte | Linhas de código | Linhas no arquivo (com comentários) |
 |---|---|---|
-| Parte 1: núcleo (codar junto) | 145 | ~240 |
+| Parte 1: núcleo (codar junto) | 153 | ~240 |
 | Parte 2: extras (só mostrar) | 107 | ~160 |
 
 ## ✅ Antes da aula
@@ -34,7 +34,7 @@ Rode o arquivo completo (`python maestro.py canva`) e apresente os primeiros sli
 - Fluxo: `câmera → IA acha a mão → qual gesto? → ação (mouse/teclado)`
 - A sacada: simulando mouse e teclado, funciona em **qualquer** programa
 
-## 10–14 min · ✍️ Seção 1: importações e configurações (21 linhas)
+## 10–14 min · ✍️ Seção 1: importações e configurações (22 linhas)
 - Para que serve cada biblioteca
 - Configurações no topo: dá para ajustar sem mexer na lógica
 - `pyautogui.PAUSE = 0` e o `FAILSAFE` (canto da tela = emergência)
@@ -60,19 +60,23 @@ Rode o arquivo completo (`python maestro.py canva`) e apresente os primeiros sli
 - O truque da pinça: sem a 2ª condição, fechar a mão vira um clique falso
 - ▶️ **Rodar:** o nome do gesto aparece na tela
 
-## 38–42 min · ✍️ Seção 5: o dedo vira mouse (13 linhas)
+## 38–42 min · ✍️ Seção 5: o dedo vira mouse (19 linhas)
 - `np.interp`: a área ativa da câmera vira a tela inteira (regra de três)
 - **Suavização:** mostre o cursor com `SUAVIZACAO = 1` e depois com `5`
+- No Windows, `mouse_event` gera movimento "de verdade" (o `moveTo` teleporta e o Paint desenha reta)
 - ▶️ **Rodar:** o cursor segue o dedo 🤯
 
-## 42–46 min · ✍️ Seção 6: a pinça vira clique (12 linhas)
+## 42–46 min · ✍️ Seção 6: a pinça vira clique (13 linhas)
 - `mouseDown`/`mouseUp`: segurar o botão é o que permite desenhar
 - Tolerância de 3 quadros: se a IA falhar em 1 quadro, o traço não quebra
+- Só clica após ~0,25 s apontando: abrir/fechar a mão ou gesticular não gera clique falso
 - ▶️ **Rodar no Paint:** todo mundo desenhando no ar
 
-## 46–51 min · ✍️ Seção 7: deslizar troca o slide (15 linhas)
-- `deque` guarda as posições dos últimos 0,4 s
-- Andou mais de 25% da imagem nesse tempo = deslize, com 1 s de espera entre deslizes
+## 46–51 min · ✍️ Seção 7: girar a mão troca o slide (15 linhas)
+- `atan2` dá a inclinação da mão (pulso → base do médio): 0° = em pé
+- Mão aberta **parada** em pé por 0,6 s "arma" o giro (gesticular com a turma não dispara)
+- Tombou mais de 35° = troca; só troca de novo depois de voltar a ficar **parada** em pé de novo (< 17°)
+- Assim a volta da mão não "desfaz" a troca e tremidas pequenas não fazem nada
 - ▶️ **Rodar no Canva/PowerPoint:** trocar slides com a mão
 
 ## 51–55 min · 👀 Parte 2: extras (só mostrar)

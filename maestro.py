@@ -7,7 +7,7 @@ qualquer programa: Canva, PowerPoint, LibreOffice Impress, Paint...
 
   ☝  Indicador levantado  -> move o cursor
   🤏 Pinça                -> segura o clique (desenha)
-  👋 Mão aberta deslizando -> próximo / anterior slide
+  👋 Mão aberta girando   -> próximo / anterior slide (como virar página)
   ✊ Mão fechada           -> nada acontece (pausa natural)
 
 PARTE 1 (Seções 1 a 7): núcleo, codado junto na aula.
@@ -24,6 +24,7 @@ Emergência: leve o mouse de verdade até um canto da tela.
 # ==========================================================================
 # SEÇÃO 1 - Importações e configurações
 # ==========================================================================
+import ctypes
 import math
 import os
 import sys
@@ -41,9 +42,9 @@ CAMERA = 0                # 0 = webcam padrão (troque para 1 se tiver outra)
 MARGEM = 0.15             # borda da câmera ignorada: o dedo alcança os cantos da tela
 SUAVIZACAO = 5            # maior = cursor mais suave (e mais lento)
 LIMIAR_PINCA = 0.35       # distância polegar-indicador (em "tamanhos de mão") para clicar
-DESLIZE_DISTANCIA = 0.25  # quanto a mão anda (fração da imagem) para trocar o slide...
-DESLIZE_JANELA = 0.4      # ...em até quantos segundos
-DESLIZE_ESPERA = 1.0      # segundos de espera entre um deslize e outro
+GIRO_ANGULO = 35          # graus que a mão aberta tomba para trocar o slide
+GIRO_FIRME = 0.6          # segundos com a mão aberta PARADA em pé antes de girar (ignora gesticular)
+MIRA_QUADROS = 8          # quadros apontando (~0,25 s) antes de a pinça poder clicar
 
 pyautogui.PAUSE = 0           # sem isso ele espera 0,1 s após cada comando
 pyautogui.FAILSAFE = True     # mouse no canto da tela = encerra (segurança)
@@ -59,8 +60,8 @@ def main():
     camera = cv2.VideoCapture(CAMERA, backend)
     detector = carregar_detector()                                   # [Seção 3]
     # Tudo que o programa precisa "lembrar" de um quadro para o outro
-    estado = {"cursor": None, "clicando": False, "sem_pinca": 0, "pausado": False,
-              "historico": deque(), "ultimo_deslize": 0.0, "direcao": None}
+    estado = {"cursor": None, "clicando": False, "sem_pinca": 0, "mirando": 0, "pausado": False,
+              "armado": None, "ultima_troca": 0.0, "direcao": None}
     inicio = time.time()
 
     try:
@@ -80,8 +81,8 @@ def main():
                 if not estado["pausado"]:                                     # [Seção 5]
                     if gesto in ("APONTAR", "PINCA"):                         # [Seção 5]
                         mover_cursor(pontos[8], estado)                       # [Seção 5]
-                    trocar_slide(pontos, gesto, estado, agora)                # [Seção 7]
             atualizar_clique("NENHUM" if estado["pausado"] else gesto, estado)  # [Seção 6]
+            trocar_slide(pontos, "NENHUM" if estado["pausado"] else gesto, estado, agora)  # [Seção 7]
 
             aplicar_extras(frame, pontos, gesto, estado, agora)   # [Parte 2] apague para desligar
             cv2.imshow("Maoestro", frame)
@@ -196,14 +197,22 @@ def mover_cursor(ponto, estado):
     y += (alvo_y - y) / SUAVIZACAO
     estado["cursor"] = (x, y)
     # Fica longe dos cantos exatos: eles são a saída de emergência
-    pyautogui.moveTo(min(max(x, 2), LARGURA_TELA - 3), min(max(y, 2), ALTURA_TELA - 3))
+    x, y = min(max(x, 2), LARGURA_TELA - 3), min(max(y, 2), ALTURA_TELA - 3)
+    if os.name == "nt":     # Windows: o moveTo "teleporta" e o Paint só vê início e fim do traço
+        pyautogui.failSafeCheck()
+        ctypes.windll.user32.mouse_event(0x8001, int(x * 65535 / (LARGURA_TELA - 1)),
+                                         int(y * 65535 / (ALTURA_TELA - 1)), 0, 0)  # movimento real
+    else:
+        pyautogui.moveTo(x, y)
 
 
 # ==========================================================================
 # SEÇÃO 6 - A pinça vira clique (segurar o clique = desenhar)
 # ==========================================================================
 def atualizar_clique(gesto, estado):
-    if gesto == "PINCA":
+    # Só clica se a pinça veio de um APONTAR firme: abrir/fechar a mão (ou gesticular)
+    # passa por uma "pinça" rápida, e isso virava clique falso (e o slide avançava)
+    if gesto == "PINCA" and (estado["clicando"] or estado["mirando"] >= MIRA_QUADROS):
         estado["sem_pinca"] = 0
         if not estado["clicando"]:
             pyautogui.mouseDown()               # aperta e SEGURA o botão
@@ -213,27 +222,29 @@ def atualizar_clique(gesto, estado):
         if estado["sem_pinca"] >= 3:
             pyautogui.mouseUp()
             estado["clicando"] = False
+    estado["mirando"] = estado["mirando"] + 1 if gesto == "APONTAR" else 0
 
 
 # ==========================================================================
-# SEÇÃO 7 - Deslizar a mão aberta troca o slide
+# SEÇÃO 7 - Girar a mão aberta troca o slide (como virar a página de um livro)
 # ==========================================================================
 def trocar_slide(pontos, gesto, estado, agora):
-    historico = estado["historico"]
-    if gesto != "MAO_ABERTA":
-        historico.clear()
+    if gesto != "MAO_ABERTA":                  # inclui "sem mão" e pausado
+        estado["armado"] = None
         return
-    # Guarda (tempo, posição x do centro da mão) só dos últimos DESLIZE_JANELA segundos
-    historico.append((agora, pontos[9].x))
-    while agora - historico[0][0] > DESLIZE_JANELA:
-        historico.popleft()
-
-    deslocamento = historico[-1][1] - historico[0][1]
-    if abs(deslocamento) > DESLIZE_DISTANCIA and agora - estado["ultimo_deslize"] > DESLIZE_ESPERA:
-        estado["direcao"] = "right" if deslocamento < 0 else "left"  # como no celular: puxar p/ esquerda = próximo
+    # Inclinação da mão (pulso -> base do médio): 0 = em pé, + = tombada p/ direita
+    angulo = math.degrees(math.atan2(pontos[9].x - pontos[0].x, pontos[0].y - pontos[9].y))
+    if abs(angulo) < GIRO_ANGULO / 2:         # "em pé" = menos da metade do giro
+        # Guarda DESDE QUANDO a mão está aberta, em pé e com o PULSO parado (mexeu = recomeça)
+        parada = estado["armado"] and distancia(pontos[0], estado["pulso"]) < 0.01
+        estado["armado"], estado["pulso"] = (estado["armado"] if parada else agora), pontos[0]
+        return
+    firme = estado["armado"] and agora - estado["armado"] > GIRO_FIRME   # parou antes de girar?
+    if firme and abs(angulo) > GIRO_ANGULO:
+        estado["direcao"] = "left" if angulo > 0 else "right"   # tombar p/ esquerda = próximo (vira a página)
         pyautogui.press(estado["direcao"])     # setas funcionam em todo programa de slides
-        estado["ultimo_deslize"] = agora
-        historico.clear()
+        estado["ultima_troca"] = agora
+        estado["armado"] = None                # para trocar de novo: parar em pé outra vez
 
 
 # ##########################################################################
@@ -320,7 +331,7 @@ def desenhar_confete(frame, estado):
 VISUAL = {
     "APONTAR":    ("MOVENDO O CURSOR",            (255, 200, 0)),
     "PINCA":      ("DESENHANDO",                  (80, 80, 255)),
-    "MAO_ABERTA": ("DESLIZE PARA TROCAR O SLIDE", (0, 220, 120)),
+    "MAO_ABERTA": ("GIRE A MAO PARA TROCAR"     , (0, 220, 120)),
     "JOINHA":     ("SEGURE O JOINHA...",          (0, 215, 255)),
     "PAZ":        ("SEGURE O PAZ...",             (255, 120, 220)),
     "PUNHO":      ("PAUSA",                       (150, 150, 150)),
@@ -384,7 +395,7 @@ def aplicar_extras(frame, pontos, gesto, estado, agora):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
 
     # Avisos grandes no meio: troca de slide (Seção 7) e atalhos (Seção 8)
-    if agora - estado["ultimo_deslize"] < 1.0:
+    if agora - estado["ultima_troca"] < 1.0:
         escrever_centralizado(frame, "PROXIMO >>" if estado["direcao"] == "right" else "<< ANTERIOR", altura // 2)
     elif estado["aviso"] and agora < estado["aviso"][1]:
         escrever_centralizado(frame, estado["aviso"][0], altura // 2)
